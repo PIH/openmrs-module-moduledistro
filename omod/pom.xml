@@ -71,6 +71,11 @@
 		</dependency>
 		
 		<!-- End OpenMRS core -->
+		
+		<dependency>
+			<groupId>commons-io</groupId>
+			<artifactId>commons-io</artifactId>
+		</dependency>
 
 	</dependencies>
 

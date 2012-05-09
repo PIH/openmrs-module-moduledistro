@@ -3,6 +3,16 @@
 
 <%@ include file="template/localHeader.jsp"%>
 
-<p>Hello ${user.systemId}!</p>
+<h1><spring:message code="distribution.manage"/></h1>
+
+<fieldset>
+	<legend>Upload a Distribution</legend>
+	<form method="post" enctype="multipart/form-data" action="manage-upload.form">
+		Distribution ZIP file:
+		<input type="file" name="distributionZip"/>
+		<br/>
+		<input type="submit" value="<spring:message code="general.upload"/>"/>
+	</form>
+</fieldset>
 
 <%@ include file="/WEB-INF/template/footer.jsp"%>

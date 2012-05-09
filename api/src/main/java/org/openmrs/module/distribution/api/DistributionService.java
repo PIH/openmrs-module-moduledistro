@@ -13,6 +13,9 @@
  */
 package org.openmrs.module.distribution.api;
 
+import java.io.File;
+import java.util.List;
+
 import org.openmrs.api.OpenmrsService;
 
 /**
@@ -27,6 +30,11 @@ import org.openmrs.api.OpenmrsService;
  */
 public interface DistributionService extends OpenmrsService {
 
-	// we don't have any service methods yet
+    /**
+     * @param distributionZip a zip file including omods
+     * @return a log of actions taken
+     */
+    List<String> uploadDistribution(File distributionZip);
+
 	
 }
