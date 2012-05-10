@@ -6,7 +6,7 @@
 	<artifactId>distribution</artifactId>
 	<version>1.0-SNAPSHOT</version>
 	<packaging>pom</packaging>
-	<name>Distribution Management module Module</name>
+	<name>Distribution Management</name>
 	<description>Support for distributing multiple OpenMRS modules in a single ZIP file, and upgrading them atomically.</description>
 	<url>https://wiki.openmrs.org/display/docs/Distribution+Management+module+Module+Module</url>
 	
