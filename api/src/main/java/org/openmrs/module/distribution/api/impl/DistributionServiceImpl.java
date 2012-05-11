@@ -102,9 +102,9 @@ public class DistributionServiceImpl extends BaseOpenmrsService implements Distr
 		// determine which omods we want to install
 		for (UploadedModule candidate : includedOmods) {
 			try {
-				log.info("about to inspect " + candidate);
+				log.debug("about to inspect " + candidate);
 	            populateFields(candidate);
-	            log.info("inspected " + candidate);
+	            log.debug("inspected " + candidate);
             }
             catch (IOException ex) {
 	            throw new RuntimeException("Error inspecting " + candidate.getOriginalFilename(), ex);
@@ -273,7 +273,7 @@ public class DistributionServiceImpl extends BaseOpenmrsService implements Distr
 	    List<ModuleAction> ret = new LinkedList<ModuleAction>();
 	    
 	    for (UploadedModule candidate : includedOmods) {
-	    	log.info("Looking at " + candidate);
+	    	log.debug("Looking at " + candidate);
 			if (Action.SKIP.equals(candidate.getAction())) {
 				ret.add(new ModuleAction(Action.SKIP, candidate));
 			}
