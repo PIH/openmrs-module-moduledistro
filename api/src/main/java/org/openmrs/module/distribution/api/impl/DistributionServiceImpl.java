@@ -19,10 +19,13 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.PriorityQueue;
 import java.util.jar.JarFile;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -43,6 +46,7 @@ import org.openmrs.module.ModuleUtil;
 import org.openmrs.module.distribution.api.DistributionService;
 import org.openmrs.module.distribution.api.db.DistributionDAO;
 import org.openmrs.module.web.WebModuleUtil;
+import org.openmrs.util.OpenmrsUtil;
 
 /**
  * It is a default implementation of {@link DistributionService}.
@@ -109,10 +113,10 @@ public class DistributionServiceImpl extends BaseOpenmrsService implements Distr
 	
 		// apply those actions (and log them)
 		List<String> log = new ArrayList<String>();
-		PriorityQueue<ModuleAction> actions = determineActions(includedOmods);	
+		List<ModuleAction> actions = determineActions(includedOmods);	
 		
 		while (!actions.isEmpty()) {
-			ModuleAction action = actions.poll();
+			ModuleAction action = removeNextAction(actions);
 
 			if (Action.SKIP.equals(action.getAction())) {
 				UploadedModule info = (UploadedModule) action.getTarget();
@@ -123,7 +127,8 @@ public class DistributionServiceImpl extends BaseOpenmrsService implements Distr
 				module.clearStartupError();
 				List<Module> dependentModulesStopped = ModuleFactory.stopModule(module, false, true);
 				for (Module depMod : dependentModulesStopped) {
-					WebModuleUtil.stopModule(depMod, servletContext);
+					if (servletContext != null)
+						WebModuleUtil.stopModule(depMod, servletContext);
 					actions.add(new ModuleAction(Action.START, depMod));
 					log.add("Stopped depended module " + depMod.getModuleId() + " version " + depMod.getVersion());
 					
@@ -132,7 +137,8 @@ public class DistributionServiceImpl extends BaseOpenmrsService implements Distr
 						actions.add(new ModuleAction(Action.START, depMod));
 					}
 				}
-				WebModuleUtil.stopModule(module, servletContext);
+				if (servletContext != null)
+					WebModuleUtil.stopModule(module, servletContext);
 				log.add("Stopped " + module.getModuleId() + " version " + module.getVersion());
 				
 			} else if (Action.REMOVE.equals(action.getAction())) {
@@ -156,8 +162,12 @@ public class DistributionServiceImpl extends BaseOpenmrsService implements Distr
 				
 			} else if (Action.START.equals(action.getAction())) {
 				Module module = (Module) action.getTarget();
+				// TODO document a core bug, that the next line does not throw the promised ModuleException
 				ModuleFactory.startModule(module);
-				WebModuleUtil.startModule(module, servletContext, false); // TODO figure out how to delay context refresh
+				if (module.getStartupErrorMessage() != null)
+					throw new RuntimeException("Failed to start module " + module + " because of: " + module.getStartupErrorMessage());
+				if (servletContext != null)
+					WebModuleUtil.startModule(module, servletContext, false); // TODO figure out how to delay context refresh
 				log.add("Started " + module.getModuleId() + " version " + module.getVersion());
 				
 			} else {
@@ -169,11 +179,76 @@ public class DistributionServiceImpl extends BaseOpenmrsService implements Distr
     }
 
 	/**
+     * Removes the element from the list which should executed next, and returns it.
+     * (We can't just use Collections.sort, or a PriorityQueue because I don't think sorting via
+     * pairwise comparison can correctly determine module startup order.)
+     * 
+     * @param actions
+     * @return
+     */
+    private ModuleAction removeNextAction(List<ModuleAction> actions) {
+    	if (actions.size() == 0)
+    		return null;
+    	
+    	Collections.sort(actions, new Comparator<ModuleAction>() {
+			@Override
+            public int compare(ModuleAction left, ModuleAction right) {
+	            return left.getAction().compareTo(right.getAction());
+            }
+    	});
+    	
+    	Action nextAction = actions.get(0).getAction();
+    	if (!Action.START.equals(nextAction)) {
+    		// for every category except for starting modules, order doesn't matter
+    		return actions.remove(0);
+    	}
+    	else {
+    		// find a module that has all its dependencies started already
+    		for (Iterator<ModuleAction> iter = actions.iterator(); iter.hasNext(); ) {
+    			ModuleAction candidate = iter.next();
+    			if (candidate.getAction().equals(Action.START) && requiredModulesStarted((Module) candidate.getTarget())) {
+    				iter.remove();
+    				return candidate;
+    			}
+    		}
+    		// if we couldn't find any startable modules, throw an error
+    		List<String> moduleIds = new ArrayList<String>();
+    		for (ModuleAction candidate : actions) {
+    			if (candidate.getAction().equals(Action.START))
+    				moduleIds.add(((Module) candidate.getTarget()).getModuleId());
+    		}
+    		throw new RuntimeException("Cannot start any of the following modules because they all depend on non-started modules: " + OpenmrsUtil.join(moduleIds, ", "));
+    	}    	
+    }
+
+	/**
+     * copied from ModuleFactory in 1.9.x
+     */
+    private boolean requiredModulesStarted(Module module) {
+		for (String reqModPackage : module.getRequiredModules()) {
+			boolean started = false;
+			for (Module mod : ModuleFactory.getStartedModules()) {
+				if (mod.getPackageName().equals(reqModPackage)) {
+					String reqVersion = module.getRequiredModuleVersion(reqModPackage);
+					if (reqVersion == null || ModuleUtil.compareVersion(mod.getVersion(), reqVersion) >= 0)
+						started = true;
+					break;
+				}
+			}
+			
+			if (!started)
+				return false;
+		}
+		
+		return true;
+	}
+
+	/**
      * @param actions
      * @param moduleId
      * @return whether actions contains a START action for the given moduleId
      */
-    private boolean scheduledToStart(PriorityQueue<ModuleAction> actions, String moduleId) {
+    private boolean scheduledToStart(Collection<ModuleAction> actions, String moduleId) {
 	    for (ModuleAction a : actions) {
 	    	try {
 		    	if (a.getAction().equals(Action.START) && PropertyUtils.getProperty(a.getTarget(), "moduleId").equals(moduleId))
@@ -187,18 +262,14 @@ public class DistributionServiceImpl extends BaseOpenmrsService implements Distr
 
 	/**
      * Given a list of include omods, that have been inspected and their ModuleInfo fields populated, determine
-     * what specific actions to take, in what order
+     * what specific actions to take
      * 
      * @param includedOmods
      * @return
      */
-    private PriorityQueue<ModuleAction> determineActions(List<UploadedModule> includedOmods) {
-	    PriorityQueue<ModuleAction> ret = new PriorityQueue<ModuleAction>(includedOmods.size() * 2, new Comparator<ModuleAction>() {
-			@Override
-            public int compare(ModuleAction left, ModuleAction right) {
-	            return left.getAction().compareTo(right.getAction());
-            }
-	    });
+    private List<ModuleAction> determineActions(List<UploadedModule> includedOmods) {
+    	// using a LinkedList here because we'll treat this as a queue and remove elements from the head
+	    List<ModuleAction> ret = new LinkedList<ModuleAction>();
 	    
 	    for (UploadedModule candidate : includedOmods) {
 	    	log.info("Looking at " + candidate);
@@ -326,6 +397,18 @@ public class DistributionServiceImpl extends BaseOpenmrsService implements Distr
     	public ModuleAction(Action action, Module target) {
     		this.action = action;
     		this.target = target;
+    	}
+    	
+    	/**
+    	 * @see java.lang.Object#toString()
+    	 */
+    	@Override
+    	public String toString() {
+    		try {
+    			return action + " " + PropertyUtils.getProperty(target, "moduleId");
+    		} catch (Exception ex) {
+    			return action + " " + target;
+    		}
     	}
 		
         /**

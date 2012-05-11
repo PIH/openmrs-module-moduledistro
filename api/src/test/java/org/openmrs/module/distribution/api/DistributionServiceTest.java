@@ -63,10 +63,10 @@ public class  DistributionServiceTest extends BaseModuleContextSensitiveTest {
     	
 	    List<String> log = service.uploadDistribution(distro, null);
 	    System.out.println(OpenmrsUtil.join(log, "\n"));
-	    Assert.assertTrue(log.contains("Installed appframework version 1.0"));
-	    Assert.assertTrue(log.contains("Installed kenyaemr version 1.0-SNAPSHOT"));
-	    Assert.assertTrue(log.contains("Started appframework version 1.0"));
-	    Assert.assertTrue(log.contains("Started kenyaemr version 1.0-SNAPSHOT"));
+	    Assert.assertTrue(log.contains("Installed uiframework version 1.3"));
+	    Assert.assertTrue(log.contains("Installed uilibrary version 1.1"));
+	    Assert.assertTrue(log.contains("Started uiframework version 1.3"));
+	    Assert.assertTrue(log.contains("Started uilibrary version 1.1"));
     }
     
 }
