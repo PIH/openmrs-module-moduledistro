@@ -22,9 +22,9 @@
 	</organization>
 
 	<scm>
-		<connection>scm:svn:http://svn.openmrs.org/openmrs-modules/distribution/trunk/</connection>
-		<developerConnection>scm:svn:http://svn.openmrs.org/openmrs-modules/distribution/trunk/</developerConnection>
-		<url>http://svn.openmrs.org/openmrs-modules/distribution/trunk/</url>
+		<connection>scm:git:git@github.com:djazayeri/openmrs-module-distribution.git</connection> 
+		<developerConnection>scm:git:git@github.com:djazayeri/openmrs-module-distribution.git</developerConnection> 
+		<url>scm:git:git@github.com:djazayeri/openmrs-module-distribution.git</url>
 	</scm>
 
 	<modules>
