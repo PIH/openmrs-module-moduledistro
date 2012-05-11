@@ -129,7 +129,6 @@ public class DistributionServiceImpl extends BaseOpenmrsService implements Distr
 				for (Module depMod : dependentModulesStopped) {
 					if (servletContext != null)
 						WebModuleUtil.stopModule(depMod, servletContext);
-					actions.add(new ModuleAction(Action.START, depMod));
 					log.add("Stopped depended module " + depMod.getModuleId() + " version " + depMod.getVersion());
 					
 					// if any modules were stopped that we're not already planning to start, we need to start them
@@ -158,7 +157,9 @@ public class DistributionServiceImpl extends BaseOpenmrsService implements Distr
 				log.add("Installed " + info.getModuleId() + " version " + info.getModuleVersion());
 				
 				// if we installed a module, we also need to start it later
-				actions.add(new ModuleAction(Action.START, loaded));
+				if (!scheduledToStart(actions, loaded.getModuleId())) {
+					actions.add(new ModuleAction(Action.START, loaded));
+				}
 				
 			} else if (Action.START.equals(action.getAction())) {
 				Module module = (Module) action.getTarget();
@@ -342,16 +343,19 @@ public class DistributionServiceImpl extends BaseOpenmrsService implements Distr
 	    	candidate.setExisting(existing);
 	    
 	    	int test = ModuleUtil.compareVersion(candidate.getModuleVersion(), existing.getVersion());
+	    	
+	    	// ModuleUtil.compareVersion treats 1.3-SNAPSHOT as being equals to 1.3, but if there's a
+	    	// snapshot version installed, we want to overwrite that with any "same" version.
 
-		    if (test > 0) {
-		    	candidate.setAction(Action.UPGRADE);
-		    } else if (test == 0) {
-		    	candidate.setAction(Action.SKIP);
-		    	candidate.setSkipReason("version " + existing.getVersion() + " is already installed");
-		    } else if (test < 0) {
+	    	if (test < 0) {
 		    	candidate.setAction(Action.SKIP);
 		    	candidate.setSkipReason("a newer version (" + existing.getVersion() + ") is already installed");
-		    }
+		    } else if (test == 0 && !existing.getVersion().contains("-SNAPSHOT")) {
+		    	candidate.setAction(Action.SKIP);
+		    	candidate.setSkipReason("version " + existing.getVersion() + " is already installed");
+		    } else { // test > 0 || (text == 0 && existing.getVersion().contains("-SNAPSHOT"))
+		    	candidate.setAction(Action.UPGRADE);
+		    } 
 	    
 		    // if the module is up-to-date, but not running, we need to start it 
 		    if (!existing.isStarted() && candidate.getAction().equals(Action.SKIP)) {
