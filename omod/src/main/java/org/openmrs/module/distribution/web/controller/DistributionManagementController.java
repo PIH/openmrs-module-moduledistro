@@ -14,12 +14,9 @@
 package org.openmrs.module.distribution.web.controller;
 
 import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.List;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
+
+import javax.servlet.http.HttpServletRequest;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.logging.Log;
@@ -27,6 +24,7 @@ import org.apache.commons.logging.LogFactory;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.distribution.api.DistributionService;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.ui.ModelMap;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -47,19 +45,22 @@ public class  DistributionManagementController {
 	}
 	
 	@RequestMapping(value = "/module/distribution/manage-upload", method = RequestMethod.POST)
-	public void handleUpload(@RequestParam("distributionZip") MultipartFile uploaded) {
+	public void handleUpload(@RequestParam("distributionZip") MultipartFile uploaded,
+	                         HttpServletRequest request,
+	                         Model model) {
 		// write this to a known file on disk, so we can use ZipFile, since ZipInputStream is buggy
 		File file = null;
 		try {
 			file = File.createTempFile("distribution", ".zip");
+			file.deleteOnExit();
 			FileUtils.copyInputStreamToFile(uploaded.getInputStream(), file);
 		}
 		catch (Exception ex) {
 			throw new RuntimeException("Error getting uploaded data", ex);
 		}
 		
-		List<String> log = Context.getService(DistributionService.class).uploadDistribution(file);
-		
+		List<String> log = Context.getService(DistributionService.class).uploadDistribution(file, request.getSession().getServletContext());
+		model.addAttribute("log", log);
 	}
 
 }

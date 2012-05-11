@@ -13,18 +13,60 @@
  */
 package org.openmrs.module.distribution.api;
 
-import static org.junit.Assert.*;
+import java.io.File;
+import java.util.List;
+import java.util.Random;
+
+import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
+import org.openmrs.GlobalProperty;
 import org.openmrs.api.context.Context;
+import org.openmrs.module.ModuleConstants;
 import org.openmrs.test.BaseModuleContextSensitiveTest;
+import org.openmrs.util.OpenmrsUtil;
 
 /**
  * Tests {@link ${DistributionService}}.
  */
 public class  DistributionServiceTest extends BaseModuleContextSensitiveTest {
 	
+	DistributionService service;
+	
+	@Before
+	public void beforeEachTest() throws Exception {
+		service = Context.getService(DistributionService.class);
+		
+		// avoid writing to the actual module folder e.g. ~/.OpenMRS/modules
+		File temp = File.createTempFile("findit", "");
+		temp.deleteOnExit();
+		File tempModuleFolder = new File(temp.getParentFile(), "MODULES" + new Random().nextInt(10000));
+		if (!tempModuleFolder.mkdir())
+			throw new RuntimeException("Failed to create folder at " + tempModuleFolder.getAbsolutePath());
+		GlobalProperty gp = new GlobalProperty(ModuleConstants.REPOSITORY_FOLDER_PROPERTY, tempModuleFolder.getAbsolutePath());
+		Context.getAdministrationService().saveGlobalProperty(gp);
+	}
+	
 	@Test
 	public void shouldSetupContext() {
-		assertNotNull(Context.getService(DistributionService.class));
+		Assert.assertNotNull(service);
 	}
+
+	/**
+     * @see DistributionService#uploadDistribution(File)
+     * @verifies upload omods in a zip
+     */
+    @Test
+    public void uploadDistribution_shouldUploadOmodsInAZip() throws Exception {
+    	File distro = new File("src/test/resources/org/openmrs/module/distribution/include/distro.zip");
+    	Assert.assertTrue(distro.exists());
+    	
+	    List<String> log = service.uploadDistribution(distro, null);
+	    System.out.println(OpenmrsUtil.join(log, "\n"));
+	    Assert.assertTrue(log.contains("Installed appframework version 1.0"));
+	    Assert.assertTrue(log.contains("Installed kenyaemr version 1.0-SNAPSHOT"));
+	    Assert.assertTrue(log.contains("Started appframework version 1.0"));
+	    Assert.assertTrue(log.contains("Started kenyaemr version 1.0-SNAPSHOT"));
+    }
+    
 }

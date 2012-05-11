@@ -16,18 +16,22 @@ package org.openmrs.module.distribution.api.impl;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.PriorityQueue;
 import java.util.jar.JarFile;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import javax.servlet.ServletContext;
+
+import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
@@ -38,6 +42,7 @@ import org.openmrs.module.ModuleFactory;
 import org.openmrs.module.ModuleUtil;
 import org.openmrs.module.distribution.api.DistributionService;
 import org.openmrs.module.distribution.api.db.DistributionDAO;
+import org.openmrs.module.web.WebModuleUtil;
 
 /**
  * It is a default implementation of {@link DistributionService}.
@@ -59,22 +64,25 @@ public class DistributionServiceImpl extends BaseOpenmrsService implements Distr
      * @see org.openmrs.module.distribution.api.DistributionService#uploadDistribution(java.io.File)
      */
     @Override
-    public List<String> uploadDistribution(File distributionZip) {
+    public List<String> uploadDistribution(File distributionZip, ServletContext servletContext) {
     	// get all omods included in the zip file, by their original filename
-    	List<ModuleInfo> includedOmods = new ArrayList<DistributionServiceImpl.ModuleInfo>();
+    	List<UploadedModule> includedOmods = new ArrayList<DistributionServiceImpl.UploadedModule>();
 		
 		ZipFile zf = null;
 		try {
 			zf = new ZipFile(distributionZip);
 			for (@SuppressWarnings("rawtypes") Enumeration e = zf.entries(); e.hasMoreElements(); ) {
 				ZipEntry entry = (ZipEntry) e.nextElement();
+				if (entry.getName().endsWith("/"))
+					continue;
 				if (!entry.getName().endsWith(".omod")) {
 					throw new RuntimeException("This ZIP is only allowed to contain omod files, but this contains: " + entry.getName());
 				}
 				File file = File.createTempFile("distributionOmod", ".omod");
+				file.deleteOnExit();
 				FileUtils.copyInputStreamToFile(zf.getInputStream(entry), file);
 				String originalName = simpleFilename(entry.getName());
-				includedOmods.add(new ModuleInfo(originalName, file));
+				includedOmods.add(new UploadedModule(originalName, file));
 			}
 		}
         catch (IOException ex) {
@@ -88,86 +96,148 @@ public class DistributionServiceImpl extends BaseOpenmrsService implements Distr
 		}
 
 		// determine which omods we want to install
-		for (ModuleInfo candidate : includedOmods) {
+		for (UploadedModule candidate : includedOmods) {
 			try {
-	            populateIdAndVersion(candidate);
+				log.info("about to inspect " + candidate);
+	            populateFields(candidate);
+	            log.info("inspected " + candidate);
             }
             catch (IOException ex) {
 	            throw new RuntimeException("Error inspecting " + candidate.getOriginalFilename(), ex);
             }
-			populateSkipReason(candidate);
 		}
+	
+		// apply those actions (and log them)
+		List<String> log = new ArrayList<String>();
+		PriorityQueue<ModuleAction> actions = determineActions(includedOmods);	
 		
-		// install those omods
-		File modulesFolder = ModuleUtil.getModuleRepository();
-		for (final ModuleInfo candidate : includedOmods) {
-			if (candidate.getSkipReason() != null)
-				continue;
-			
-			// if there's an existing omod for a different version of this module, delete it
-			File[] toDelete = modulesFolder.listFiles(new FilenameFilter() {
-				@Override
-				public boolean accept(File file, String filename) {
-					return filename.startsWith(candidate.getModuleId() + "-") && filename.endsWith(".omod");
+		while (!actions.isEmpty()) {
+			ModuleAction action = actions.poll();
+
+			if (Action.SKIP.equals(action.getAction())) {
+				UploadedModule info = (UploadedModule) action.getTarget();
+				log.add(info.getOriginalFilename() + ": skipped because " + info.getSkipReason());
+				
+			} else if (Action.STOP.equals(action.getAction())) {
+				Module module = (Module) action.getTarget();
+				module.clearStartupError();
+				List<Module> dependentModulesStopped = ModuleFactory.stopModule(module, false, true);
+				for (Module depMod : dependentModulesStopped) {
+					WebModuleUtil.stopModule(depMod, servletContext);
+					actions.add(new ModuleAction(Action.START, depMod));
+					log.add("Stopped depended module " + depMod.getModuleId() + " version " + depMod.getVersion());
+					
+					// if any modules were stopped that we're not already planning to start, we need to start them
+					if (!scheduledToStart(actions, depMod.getModuleId())) {
+						actions.add(new ModuleAction(Action.START, depMod));
+					}
 				}
-			});
-			if (toDelete != null && toDelete.length > 0) {
-				for (File f : toDelete)
-					f.delete();
+				WebModuleUtil.stopModule(module, servletContext);
+				log.add("Stopped " + module.getModuleId() + " version " + module.getVersion());
+				
+			} else if (Action.REMOVE.equals(action.getAction())) {
+				Module module = (Module) action.getTarget();
+				ModuleFactory.unloadModule(module);
+				log.add("Removed " + module.getModuleId() + " version " + module.getVersion());
+				
+			} else if (Action.INSTALL.equals(action.getAction())) {
+				UploadedModule info = (UploadedModule) action.getTarget();
+				File inserted;
+				try {
+					inserted = ModuleUtil.insertModuleFile(new FileInputStream(info.getData()), info.getOriginalFilename());
+				} catch (FileNotFoundException ex) {
+					throw new RuntimeException("Unexpected FileNotFoundException", ex);
+				}
+				Module loaded = ModuleFactory.loadModule(inserted);
+				log.add("Installed " + info.getModuleId() + " version " + info.getModuleVersion());
+				
+				// if we installed a module, we also need to start it later
+				actions.add(new ModuleAction(Action.START, loaded));
+				
+			} else if (Action.START.equals(action.getAction())) {
+				Module module = (Module) action.getTarget();
+				ModuleFactory.startModule(module);
+				WebModuleUtil.startModule(module, servletContext, false); // TODO figure out how to delay context refresh
+				log.add("Started " + module.getModuleId() + " version " + module.getVersion());
+				
+			} else {
+				throw new RuntimeException("Programming Error: don't know how to handle action: " + action.getAction());
 			}
-			try {
-	            ModuleUtil.insertModuleFile(new FileInputStream(candidate.getData()), candidate.getOriginalFilename());
-            }
-            catch (FileNotFoundException ex) {
-	            throw new RuntimeException("Programming error: file should exist (" + candidate.getData().getAbsolutePath() + ")", ex);
-            }
 		}
 		
-		List<String> ret = new ArrayList<String>();
-		for (ModuleInfo info : includedOmods) {
-			String line = info.getOriginalFilename() + ": ";
-			if (info.getSkipReason() != null) {
-				line += "skipped because " + info.getSkipReason();
-			} else {
-				line += "installed (" + info.getModuleId() + " version " + info.getModuleVersion() + ")";
-			}
-			ret.add(line);
-		}
-		return ret;
+		return log;
     }
 
 	/**
-	 * Populates skipVersion on candidate (or leaves it null if it shouldn't be skipped)
-     * @param candidate
+     * @param actions
+     * @param moduleId
+     * @return whether actions contains a START action for the given moduleId
      */
-    private void populateSkipReason(ModuleInfo candidate) {
-    	Module existing = ModuleFactory.getModuleById(candidate.getModuleId());
-	    if (existing == null)
-	    	return;
-	    if (!existing.isStarted())
-	    	throw new RuntimeException("TODO: handle the case where the module is present but not started");
-
-	    int test = ModuleUtil.compareVersion(candidate.getModuleVersion(), existing.getVersion());
-	    if (test == 0) {
-	    	candidate.setSkipReason("version " + existing.getVersion() + " is already installed");
-	    } else if (test < 0) {
-	    	candidate.setSkipReason("a newer version (" + existing.getVersion() + ") is already installed");
+    private boolean scheduledToStart(PriorityQueue<ModuleAction> actions, String moduleId) {
+	    for (ModuleAction a : actions) {
+	    	try {
+		    	if (a.getAction().equals(Action.START) && PropertyUtils.getProperty(a.getTarget(), "moduleId").equals(moduleId))
+		    		return true;
+	    	} catch (Exception ex) {
+	    		throw new RuntimeException("Cannot determine moduleId of " + a.getTarget());
+	    	}
 	    }
+	    return false;
     }
 
 	/**
-     * Populates the moduleId and moduleVersion fields on candidate
+     * Given a list of include omods, that have been inspected and their ModuleInfo fields populated, determine
+     * what specific actions to take, in what order
+     * 
+     * @param includedOmods
+     * @return
+     */
+    private PriorityQueue<ModuleAction> determineActions(List<UploadedModule> includedOmods) {
+	    PriorityQueue<ModuleAction> ret = new PriorityQueue<ModuleAction>(includedOmods.size() * 2, new Comparator<ModuleAction>() {
+			@Override
+            public int compare(ModuleAction left, ModuleAction right) {
+	            return left.getAction().compareTo(right.getAction());
+            }
+	    });
+	    
+	    for (UploadedModule candidate : includedOmods) {
+	    	log.info("Looking at " + candidate);
+			if (Action.SKIP.equals(candidate.getAction())) {
+				ret.add(new ModuleAction(Action.SKIP, candidate));
+			}
+			else if (Action.START.equals(candidate.getAction())) {
+				ret.add(new ModuleAction(Action.START, candidate.getExisting()));
+				// TODO see if we need to start any dependent modules
+			}
+			else if (Action.INSTALL.equals(candidate.getAction())) {
+				ret.add(new ModuleAction(Action.INSTALL, candidate));
+			}
+			else if (Action.UPGRADE.equals(candidate.getAction())) {
+				ret.add(new ModuleAction(Action.STOP, candidate.getExisting()));
+				ret.add(new ModuleAction(Action.REMOVE, candidate.getExisting()));
+				ret.add(new ModuleAction(Action.INSTALL, candidate));
+			}
+			else {
+				throw new RuntimeException("Programming error: don't know how to handle action " + candidate.getAction() + " on " + candidate);
+			}
+		}
+	    
+	    return ret;
+    }
+
+	/**
+     * Populates the moduleId, moduleVersion, action, and skipVersion fields on candidate
      * 
      * @param candidate
 	 * @throws IOException
 	 *
 	 * @should read the id and version from config.xml 
      */
-    public void populateIdAndVersion(ModuleInfo candidate) throws IOException {
+    public void populateFields(UploadedModule candidate) throws IOException {
 	    JarFile jar = new JarFile(candidate.getData());
-	    ZipEntry entry = jar.getEntry("metadata/config.xml");
+	    ZipEntry entry = jar.getEntry("config.xml");
 	    if (entry == null) {
-	    	throw new IOException("Cannot find metadata/config.xml");
+	    	throw new IOException("Cannot find config.xml");
 	    }
 	    StringWriter sw = new StringWriter();
 	    IOUtils.copy(jar.getInputStream(entry), sw);
@@ -191,6 +261,33 @@ public class DistributionServiceImpl extends BaseOpenmrsService implements Distr
 
 	    candidate.setModuleId(moduleId);
 	    candidate.setModuleVersion(moduleVersion);
+	    
+    	Module existing = ModuleFactory.getModuleById(candidate.getModuleId());
+	    if (existing == null) {
+	    	candidate.setAction(Action.INSTALL);
+	    	return;
+	    }
+	    else { // there's an existing module
+	    	candidate.setExisting(existing);
+	    
+	    	int test = ModuleUtil.compareVersion(candidate.getModuleVersion(), existing.getVersion());
+
+		    if (test > 0) {
+		    	candidate.setAction(Action.UPGRADE);
+		    } else if (test == 0) {
+		    	candidate.setAction(Action.SKIP);
+		    	candidate.setSkipReason("version " + existing.getVersion() + " is already installed");
+		    } else if (test < 0) {
+		    	candidate.setAction(Action.SKIP);
+		    	candidate.setSkipReason("a newer version (" + existing.getVersion() + ") is already installed");
+		    }
+	    
+		    // if the module is up-to-date, but not running, we need to start it 
+		    if (!existing.isStarted() && candidate.getAction().equals(Action.SKIP)) {
+		    	candidate.setAction(Action.START);
+		    }
+	    }
+
     }
 
 	/**
@@ -205,20 +302,92 @@ public class DistributionServiceImpl extends BaseOpenmrsService implements Distr
 	    return name;
     }
     
-    public class ModuleInfo {
+    /**
+     * The order here is important
+     */
+    public enum Action {
+    	SKIP,
+    	STOP,
+    	REMOVE,
+    	INSTALL,
+    	START,
+    	UPGRADE
+    }
+    
+    public class ModuleAction {
+    	private Action action;
+    	private Object target;
+
+    	public ModuleAction(Action action, UploadedModule target) {
+    		this.action = action;
+    		this.target = target;
+    	}
+    	
+    	public ModuleAction(Action action, Module target) {
+    		this.action = action;
+    		this.target = target;
+    	}
+		
+        /**
+         * @return the action
+         */
+        public Action getAction() {
+        	return action;
+        }
+		
+        /**
+         * @param action the action to set
+         */
+        public void setAction(Action action) {
+        	this.action = action;
+        }
+		
+        /**
+         * @return the target
+         */
+        public Object getTarget() {
+        	return target;
+        }
+		
+        /**
+         * @param target the target to set
+         */
+        public void setTarget(Object target) {
+        	this.target = target;
+        }
+    	
+    }
+    
+    public class UploadedModule {
     	private String originalFilename;
     	private File data;
     	private String moduleId;
     	private String moduleVersion;
+    	private Module existing;
+    	private Action action;
     	private String skipReason;
 
     	/**
          * @param originalFilename
          * @param data
          */
-        public ModuleInfo(String originalFilename, File data) {
+        public UploadedModule(String originalFilename, File data) {
 	        this.originalFilename = originalFilename;
 	        this.data = data;
+        }
+        
+        /**
+         * @see java.lang.Object#toString()
+         */
+        public String toString() {
+        	StringBuilder sb = new StringBuilder();
+        	sb.append(originalFilename + " (" + data.getAbsolutePath() + ") -> " + moduleId + " v" + moduleVersion + " ");
+        	if (existing != null)
+        		sb.append("already loaded with v" + existing.getVersion() + " ");
+        	sb.append("action=" + action);
+        	if (skipReason != null)
+        		sb.append(" skip because " + skipReason);
+        	return sb.toString();
         }
 		
         /**
@@ -289,6 +458,34 @@ public class DistributionServiceImpl extends BaseOpenmrsService implements Distr
          */
         public void setSkipReason(String skipReason) {
         	this.skipReason = skipReason;
+        }
+		
+        /**
+         * @return the action
+         */
+        public Action getAction() {
+        	return action;
+        }
+		
+        /**
+         * @param action the action to set
+         */
+        public void setAction(Action action) {
+        	this.action = action;
+        }
+		
+        /**
+         * @return the existing
+         */
+        public Module getExisting() {
+        	return existing;
+        }
+		
+        /**
+         * @param existing the existing to set
+         */
+        public void setExisting(Module existing) {
+        	this.existing = existing;
         }
     	
     }

@@ -16,6 +16,8 @@ package org.openmrs.module.distribution.api;
 import java.io.File;
 import java.util.List;
 
+import javax.servlet.ServletContext;
+
 import org.openmrs.api.OpenmrsService;
 
 /**
@@ -32,9 +34,12 @@ public interface DistributionService extends OpenmrsService {
 
     /**
      * @param distributionZip a zip file including omods
+     * @param servletContext
      * @return a log of actions taken
+     * 
+     * @should upload omods in a zip
      */
-    List<String> uploadDistribution(File distributionZip);
+    List<String> uploadDistribution(File distributionZip, ServletContext servletContext);
 
 	
 }
