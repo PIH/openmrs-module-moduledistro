@@ -3,15 +3,13 @@
 
 <%@ include file="template/localHeader.jsp"%>
 
-<h1><spring:message code="distribution.manage"/></h1>
-
 <fieldset>
-	<legend>Upload a Distribution</legend>
+	<legend><spring:message code="distribution.upload.heading"/></legend>
 	<form method="post" enctype="multipart/form-data" action="manage-upload.form">
-		Distribution ZIP file:
+		<spring:message code="distribution.upload.zip"/>:
 		<input type="file" name="distributionZip"/>
 		<br/>
-		<input type="submit" value="<spring:message code="general.upload"/>"/>
+		<input type="submit" value="<spring:message code="distribution.upload.submit"/>"/>
 	</form>
 </fieldset>
 
