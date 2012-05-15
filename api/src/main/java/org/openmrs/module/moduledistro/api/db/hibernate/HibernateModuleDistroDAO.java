@@ -11,17 +11,17 @@
  *
  * Copyright (C) OpenMRS, LLC.  All Rights Reserved.
  */
-package org.openmrs.module.distribution.api.db.hibernate;
+package org.openmrs.module.moduledistro.api.db.hibernate;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.hibernate.SessionFactory;
-import org.openmrs.module.distribution.api.db.DistributionDAO;
+import org.openmrs.module.moduledistro.api.db.ModuleDistroDAO;
 
 /**
- * It is a default implementation of  {@link DistributionDAO}.
+ * It is a default implementation of  {@link ModuleDistroDAO}.
  */
-public class HibernateDistributionDAO implements DistributionDAO {
+public class HibernateModuleDistroDAO implements ModuleDistroDAO {
 	protected final Log log = LogFactory.getLog(this.getClass());
 	
 	private SessionFactory sessionFactory;

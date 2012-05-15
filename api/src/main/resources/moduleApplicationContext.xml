@@ -24,16 +24,16 @@
 	<bean parent="serviceContext">
 		<property name="moduleService">
 			<list>
-				<value>${project.parent.groupId}.${project.parent.artifactId}.api.DistributionService</value>
+				<value>${project.parent.groupId}.${project.parent.artifactId}.api.ModuleDistroService</value>
 				<bean
 					class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
 					<property name="transactionManager">
 						<ref bean="transactionManager" />
 					</property>
 					<property name="target">
-						<bean class="${project.parent.groupId}.${project.parent.artifactId}.api.impl.DistributionServiceImpl">
+						<bean class="${project.parent.groupId}.${project.parent.artifactId}.api.impl.ModuleDistroServiceImpl">
 							<property name="dao">
-								<bean class="${project.parent.groupId}.${project.parent.artifactId}.api.db.hibernate.HibernateDistributionDAO">
+								<bean class="${project.parent.groupId}.${project.parent.artifactId}.api.db.hibernate.HibernateModuleDistroDAO">
 									<property name="sessionFactory">
 										<ref bean="sessionFactory" />
 									</property>

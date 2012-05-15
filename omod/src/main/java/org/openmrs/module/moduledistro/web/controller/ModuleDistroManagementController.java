@@ -11,7 +11,7 @@
  *
  * Copyright (C) OpenMRS, LLC.  All Rights Reserved.
  */
-package org.openmrs.module.distribution.web.controller;
+package org.openmrs.module.moduledistro.web.controller;
 
 import java.io.File;
 import java.util.List;
@@ -22,7 +22,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openmrs.api.context.Context;
-import org.openmrs.module.distribution.api.DistributionService;
+import org.openmrs.module.moduledistro.api.ModuleDistroService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.ui.ModelMap;
@@ -35,16 +35,16 @@ import org.springframework.web.multipart.MultipartFile;
  * The main controller.
  */
 @Controller
-public class  DistributionManagementController {
+public class ModuleDistroManagementController {
 	
 	protected final Log log = LogFactory.getLog(getClass());
 	
-	@RequestMapping(value = "/module/distribution/manage", method = RequestMethod.GET)
+	@RequestMapping(value = "/module/moduledistro/manage", method = RequestMethod.GET)
 	public void manage(ModelMap model) {
 		model.addAttribute("user", Context.getAuthenticatedUser());
 	}
 	
-	@RequestMapping(value = "/module/distribution/manage-upload", method = RequestMethod.POST)
+	@RequestMapping(value = "/module/moduledistro/manage-upload", method = RequestMethod.POST)
 	public void handleUpload(@RequestParam("distributionZip") MultipartFile uploaded,
 	                         HttpServletRequest request,
 	                         Model model) {
@@ -59,7 +59,7 @@ public class  DistributionManagementController {
 			throw new RuntimeException("Error getting uploaded data", ex);
 		}
 		
-		List<String> log = Context.getService(DistributionService.class).uploadDistribution(file, request.getSession().getServletContext());
+		List<String> log = Context.getService(ModuleDistroService.class).uploadDistro(file, request.getSession().getServletContext());
 		model.addAttribute("log", log);
 	}
 

@@ -11,7 +11,7 @@
  *
  * Copyright (C) OpenMRS, LLC.  All Rights Reserved.
  */
-package org.openmrs.module.distribution.extension.html;
+package org.openmrs.module.moduledistro.extension.html;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -21,7 +21,7 @@ import org.openmrs.module.web.extension.AdministrationSectionExt;
 
 /**
  * This class defines the links that will appear on the administration page under the
- * "distribution.title" heading. 
+ * "moduledistro.title" heading. 
  */
 public class AdminList extends AdministrationSectionExt {
 	
@@ -36,7 +36,7 @@ public class AdminList extends AdministrationSectionExt {
 	 * @see AdministrationSectionExt#getTitle()
 	 */
 	public String getTitle() {
-		return "distribution.title";
+		return "moduledistro.title";
 	}
 	
 	/**
@@ -44,7 +44,7 @@ public class AdminList extends AdministrationSectionExt {
 	 */
 	public Map<String, String> getLinks() {
 		LinkedHashMap<String, String> map = new LinkedHashMap<String, String>();
-		map.put("/module/distribution/manage.form", "distribution.manage");
+		map.put("/module/moduledistro/manage.form", "moduledistro.manage");
 		return map;
 	}
 	

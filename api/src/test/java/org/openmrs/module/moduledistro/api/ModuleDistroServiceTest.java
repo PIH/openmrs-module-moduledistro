@@ -11,7 +11,7 @@
  *
  * Copyright (C) OpenMRS, LLC.  All Rights Reserved.
  */
-package org.openmrs.module.distribution.api;
+package org.openmrs.module.moduledistro.api;
 
 import java.io.File;
 import java.util.List;
@@ -23,19 +23,20 @@ import org.junit.Test;
 import org.openmrs.GlobalProperty;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.ModuleConstants;
+import org.openmrs.module.moduledistro.api.ModuleDistroService;
 import org.openmrs.test.BaseModuleContextSensitiveTest;
 import org.openmrs.util.OpenmrsUtil;
 
 /**
- * Tests {@link ${DistributionService}}.
+ * Tests {@link ModuleDistroService}.
  */
-public class  DistributionServiceTest extends BaseModuleContextSensitiveTest {
+public class  ModuleDistroServiceTest extends BaseModuleContextSensitiveTest {
 	
-	DistributionService service;
+	ModuleDistroService service;
 	
 	@Before
 	public void beforeEachTest() throws Exception {
-		service = Context.getService(DistributionService.class);
+		service = Context.getService(ModuleDistroService.class);
 		
 		// avoid writing to the actual module folder e.g. ~/.OpenMRS/modules
 		File temp = File.createTempFile("findit", "");
@@ -53,15 +54,15 @@ public class  DistributionServiceTest extends BaseModuleContextSensitiveTest {
 	}
 
 	/**
-     * @see DistributionService#uploadDistribution(File)
+     * @see ModuleDistroService#uploadDistro(File)
      * @verifies upload omods in a zip
      */
     @Test
-    public void uploadDistribution_shouldUploadOmodsInAZip() throws Exception {
-    	File distro = new File("src/test/resources/org/openmrs/module/distribution/include/distro.zip");
+    public void uploadDistro_shouldUploadOmodsInAZip() throws Exception {
+    	File distro = new File("src/test/resources/org/openmrs/module/moduledistro/include/distro.zip");
     	Assert.assertTrue(distro.exists());
     	
-	    List<String> log = service.uploadDistribution(distro, null);
+	    List<String> log = service.uploadDistro(distro, null);
 	    System.out.println(OpenmrsUtil.join(log, "\n"));
 	    Assert.assertTrue(log.contains("Installed uiframework version 1.3"));
 	    Assert.assertTrue(log.contains("Installed uilibrary version 1.1"));

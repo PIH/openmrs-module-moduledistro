@@ -11,14 +11,14 @@
  *
  * Copyright (C) OpenMRS, LLC.  All Rights Reserved.
  */
-package org.openmrs.module.distribution.api.db;
+package org.openmrs.module.moduledistro.api.db;
 
-import org.openmrs.module.distribution.api.DistributionService;
+import org.openmrs.module.moduledistro.api.ModuleDistroService;
 
 /**
- *  Database methods for {@link DistributionService}.
+ *  Database methods for {@link ModuleDistroService}.
  */
-public interface DistributionDAO {
+public interface ModuleDistroDAO {
 	
 	/*
 	 * Add DAO methods here

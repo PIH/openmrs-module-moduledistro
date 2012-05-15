@@ -26,6 +26,6 @@
 	<!-- Annotation based controllers -->
 	<bean class="org.springframework.web.servlet.mvc.annotation.DefaultAnnotationHandlerMapping"/>
 	
-	<context:component-scan base-package="org.openmrs.module.distribution.web.controller" />
+	<context:component-scan base-package="org.openmrs.module.moduledistro.web.controller" />
 		
 </beans>

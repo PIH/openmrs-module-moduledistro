@@ -11,7 +11,7 @@
  *
  * Copyright (C) OpenMRS, LLC.  All Rights Reserved.
  */
-package org.openmrs.module.distribution.api.impl;
+package org.openmrs.module.moduledistro.api.impl;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -43,34 +43,34 @@ import org.openmrs.api.impl.BaseOpenmrsService;
 import org.openmrs.module.Module;
 import org.openmrs.module.ModuleFactory;
 import org.openmrs.module.ModuleUtil;
-import org.openmrs.module.distribution.api.DistributionService;
-import org.openmrs.module.distribution.api.db.DistributionDAO;
+import org.openmrs.module.moduledistro.api.ModuleDistroService;
+import org.openmrs.module.moduledistro.api.db.ModuleDistroDAO;
 import org.openmrs.module.web.WebModuleUtil;
 import org.openmrs.util.OpenmrsUtil;
 
 /**
- * It is a default implementation of {@link DistributionService}.
+ * It is a default implementation of {@link ModuleDistroService}.
  */
-public class DistributionServiceImpl extends BaseOpenmrsService implements DistributionService {
+public class ModuleDistroServiceImpl extends BaseOpenmrsService implements ModuleDistroService {
 	
 	protected final Log log = LogFactory.getLog(this.getClass());
 	
-	private DistributionDAO dao;
+	private ModuleDistroDAO dao;
 	
 	/**
      * @param dao the dao to set
      */
-    public void setDao(DistributionDAO dao) {
+    public void setDao(ModuleDistroDAO dao) {
 	    this.dao = dao;
     }
 
     /**
-     * @see org.openmrs.module.distribution.api.DistributionService#uploadDistribution(java.io.File)
+     * @see org.openmrs.module.moduledistro.api.ModuleDistroService#uploadDistro(java.io.File)
      */
     @Override
-    public List<String> uploadDistribution(File distributionZip, ServletContext servletContext) {
+    public List<String> uploadDistro(File distributionZip, ServletContext servletContext) {
     	// get all omods included in the zip file, by their original filename
-    	List<UploadedModule> includedOmods = new ArrayList<DistributionServiceImpl.UploadedModule>();
+    	List<UploadedModule> includedOmods = new ArrayList<ModuleDistroServiceImpl.UploadedModule>();
 		
 		ZipFile zf = null;
 		try {

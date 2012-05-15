@@ -11,7 +11,7 @@
  *
  * Copyright (C) OpenMRS, LLC.  All Rights Reserved.
  */
-package org.openmrs.module.distribution;
+package org.openmrs.module.moduledistro;
 
 
 import org.apache.commons.logging.Log;
@@ -22,7 +22,7 @@ import org.openmrs.module.ModuleActivator;
 /**
  * This class contains the logic that is run every time this module is either started or stopped.
  */
-public class DistributionManagementModuleActivator extends BaseModuleActivator {
+public class ModuleDistroModuleActivator extends BaseModuleActivator {
 	
 	protected Log log = LogFactory.getLog(getClass());
 		
@@ -30,21 +30,21 @@ public class DistributionManagementModuleActivator extends BaseModuleActivator {
 	 * @see ModuleActivator#willStart()
 	 */
 	public void willStart() {
-		log.info("Starting Distribution Management module Module");
+		log.info("Starting Module Distro module");
 	}
 	
 	/**
 	 * @see ModuleActivator#started()
 	 */
 	public void started() {
-		log.info("Distribution Management module Module started");
+		log.info("Module Distro module started");
 	}
 		
 	/**
 	 * @see ModuleActivator#stopped()
 	 */
 	public void stopped() {
-		log.info("Distribution Management module Module stopped");
+		log.info("Module Distro module stopped");
 	}
 		
 }

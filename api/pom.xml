@@ -3,14 +3,14 @@
 
 	<parent>
 		<groupId>org.openmrs.module</groupId>
-		<artifactId>distribution</artifactId>
+		<artifactId>moduledistro</artifactId>
 		<version>1.1-SNAPSHOT</version>
 	</parent>
 
-	<artifactId>distribution-api</artifactId>
+	<artifactId>moduledistro-api</artifactId>
 	<packaging>jar</packaging>
-	<name>Distribution Management module Module API</name>
-	<description>API project for DistributionManagementmodule</description>
+	<name>Module Distro moduleAPI</name>
+	<description>API project for Module Distro module</description>
 
 	<dependencies>
 	

@@ -3,12 +3,12 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>org.openmrs.module</groupId>
-	<artifactId>distribution</artifactId>
+	<artifactId>moduledistro</artifactId>
 	<version>1.1-SNAPSHOT</version>
 	<packaging>pom</packaging>
-	<name>Distribution Management</name>
+	<name>Module Distro module</name>
 	<description>Support for distributing multiple OpenMRS modules in a single ZIP file, and upgrading them atomically.</description>
-	<url>https://wiki.openmrs.org/display/docs/Distribution+Management+module+Module+Module</url>
+	<url>https://wiki.openmrs.org/display/docs/Module+Distro+module</url>
 	
 	<developers>
 		<developer>
@@ -22,9 +22,9 @@
 	</organization>
 
 	<scm>
-		<connection>scm:git:git@github.com:djazayeri/openmrs-module-distribution.git</connection> 
-		<developerConnection>scm:git:git@github.com:djazayeri/openmrs-module-distribution.git</developerConnection> 
-		<url>scm:git:git@github.com:djazayeri/openmrs-module-distribution.git</url>
+		<connection>scm:git:git@github.com:PIH/openmrs-module-moduledistro.git</connection> 
+		<developerConnection>scm:git:git@github.com:PIH/openmrs-module-moduledistro.git</developerConnection> 
+		<url>scm:git:git@github.com:PIH/openmrs-module-moduledistro.git</url>
 	</scm>
 
 	<modules>

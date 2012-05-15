@@ -11,7 +11,7 @@
  *
  * Copyright (C) OpenMRS, LLC.  All Rights Reserved.
  */
-package org.openmrs.module.distribution.api;
+package org.openmrs.module.moduledistro.api;
 
 import java.io.File;
 import java.util.List;
@@ -25,12 +25,12 @@ import org.openmrs.api.OpenmrsService;
  * <p>
  * It can be accessed only via Context:<br>
  * <code>
- * Context.getService(DistributionService.class).someMethod();
+ * Context.getService(ModuleDistroService.class).someMethod();
  * </code>
  * 
  * @see org.openmrs.api.context.Context
  */
-public interface DistributionService extends OpenmrsService {
+public interface ModuleDistroService extends OpenmrsService {
 
     /**
      * @param distributionZip a zip file including omods
@@ -39,7 +39,7 @@ public interface DistributionService extends OpenmrsService {
      * 
      * @should upload omods in a zip
      */
-    List<String> uploadDistribution(File distributionZip, ServletContext servletContext);
+    List<String> uploadDistro(File distributionZip, ServletContext servletContext);
 
 	
 }
