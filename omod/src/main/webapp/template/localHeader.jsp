@@ -5,12 +5,12 @@
 				code="admin.title.short" /></a></li>
 
 	<li <c:if test='<%= request.getRequestURI().contains("/manage") %>'>class="active"</c:if>>
-		<a href="${pageContext.request.contextPath}/module/distribution/manage.form"><spring:message
-				code="distribution.manage" /></a>
+		<a href="${pageContext.request.contextPath}/module/moduledistro/manage.form"><spring:message
+				code="moduledistro.manage" /></a>
 	</li>
 	
 	<!-- Add further links here -->
 </ul>
 <h2>
-	<spring:message code="distribution.title" />
+	<spring:message code="moduledistro.title" />
 </h2>

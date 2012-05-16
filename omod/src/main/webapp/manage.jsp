@@ -4,12 +4,12 @@
 <%@ include file="template/localHeader.jsp"%>
 
 <fieldset>
-	<legend><spring:message code="distribution.upload.heading"/></legend>
+	<legend><spring:message code="moduledistro.upload.heading"/></legend>
 	<form method="post" enctype="multipart/form-data" action="manage-upload.form">
-		<spring:message code="distribution.upload.zip"/>:
+		<spring:message code="moduledistro.upload.zip"/>:
 		<input type="file" name="distributionZip"/>
 		<br/>
-		<input type="submit" value="<spring:message code="distribution.upload.submit"/>"/>
+		<input type="submit" value="<spring:message code="moduledistro.upload.submit"/>"/>
 	</form>
 </fieldset>
 
