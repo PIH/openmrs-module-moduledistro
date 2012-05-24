@@ -342,20 +342,12 @@ public class ModuleDistroServiceImpl extends BaseOpenmrsService implements Modul
 	    else { // there's an existing module
 	    	candidate.setExisting(existing);
 	    
-	    	int test = ModuleUtil.compareVersion(candidate.getModuleVersion(), existing.getVersion());
-	    	
-	    	// ModuleUtil.compareVersion treats 1.3-SNAPSHOT as being equals to 1.3, but if there's a
-	    	// snapshot version installed, we want to overwrite that with any "same" version.
-
-	    	if (test < 0) {
-		    	candidate.setAction(Action.SKIP);
-		    	candidate.setSkipReason("a newer version (" + existing.getVersion() + ") is already installed");
-		    } else if (test == 0 && !existing.getVersion().contains("-SNAPSHOT")) {
-		    	candidate.setAction(Action.SKIP);
-		    	candidate.setSkipReason("version " + existing.getVersion() + " is already installed");
-		    } else { // test > 0 || (text == 0 && existing.getVersion().contains("-SNAPSHOT"))
-		    	candidate.setAction(Action.UPGRADE);
-		    } 
+	    	if (shouldInstallNewVersion(candidate.getModuleVersion(), existing.getVersion())) {
+	    		candidate.setAction(Action.UPGRADE);
+	    	} else {
+	    		candidate.setAction(Action.SKIP);
+	    		candidate.setSkipReason("an equivalent or newer version is already installed: (" + existing.getVersion() + ")");
+	    	}	    	
 	    
 		    // if the module is up-to-date, but not running, we need to start it 
 		    if (!existing.isStarted() && candidate.getAction().equals(Action.SKIP)) {
@@ -363,6 +355,36 @@ public class ModuleDistroServiceImpl extends BaseOpenmrsService implements Modul
 		    }
 	    }
 
+    }
+
+	/**
+     * public for testing
+     * 
+     * @param candidateVersion
+     * @param existingVersion
+     * @return whether candidateVersion should be installed over existingVersion
+     * 
+     * @should return false for 1.0-SNAPSHOT versus 1.0
+     * @should return true for 1.0 versus 1.0-SNAPSHOT
+     * @should return true for 1.0-SNAPSHOT versus 1.0-SNAPSHOT
+     * @should return true for 1.0 versus 0.9.5
+     * @should return false for 0.9.5 versus 1.0
+     * @should return true for 1.0-SNAPSHOT versus 0.9
+     * @should return false for 1.0-SNAPSHOT versus 1.1
+     */
+    public boolean shouldInstallNewVersion(String candidateVersion, String existingVersion) {
+    	int test = ModuleUtil.compareVersion(candidateVersion, existingVersion);
+    	
+    	// ModuleUtil.compareVersion treats 1.3-SNAPSHOT as being equals to 1.3, but if there's a
+    	// snapshot version installed, we want to overwrite that with any "same" version.
+
+    	if (test < 0) {
+	    	return false;
+	    } else if (test > 0 || existingVersion.contains("-SNAPSHOT")) {
+	    	return true;
+	    } else { // test == 0 && !existingVersion.contains("-SNAPSHOT")
+	    	return false;
+	    } 
     }
 
 	/**
